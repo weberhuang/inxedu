@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="StudentMapper">
+
+	<sql id="edu_student_column">
+	EDU_STUDENT.STUDENT_ID,
+	EDU_STUDENT.TITLE,
+	EDU_STUDENT.SUMMARY,
+	EDU_STUDENT.IMAGE_URL,
+	EDU_STUDENT.SOURCE,
+	EDU_STUDENT.AUTHOR,
+	EDU_STUDENT.CREATE_TIME,
+	EDU_STUDENT.PUBLISH_TIME,
+	EDU_STUDENT.STUDENT_TYPE,
+	EDU_STUDENT.CLICK_NUM,
+	EDU_STUDENT.PRAISE_COUNT,
+	EDU_STUDENT.COMMENT_NUM,
+	EDU_STUDENT.SORT
+	</sql>
+	<sql id="edu_student_property">
+	#{studentId},
+	#{title},
+	#{summary},
+	#{imageUrl},
+	#{source},
+	#{author},
+	#{createTime},
+	#{publishTime},
+	#{type},
+	#{clickNum},
+	#{praiseCount},
+	#{commentNum},
+	#{sort}
+	</sql>
+	
+	<sql id="edu_student_content_column">
+	EDU_STUDENT_CONTENT.STUDENT_ID,
+	EDU_STUDENT_CONTENT.CONTENT
+	</sql>
+	<sql id="edu_student_content_property">
+	#{studentId},#{content}
+	</sql>
+	
+	<resultMap type="Student" id="StudentResult">
+	<result property="studentId" column="STUDENT_ID"/>
+	<result property="title" column="TITLE"/>
+	<result property="summary" column="SUMMARY"/>
+	<result property="imageUrl" column="IMAGE_URL"/>
+	<result property="source" column="SOURCE"/>
+	<result property="author" column="AUTHOR"/>
+	<result property="createTime" column="CREATE_TIME"/>
+	<result property="publishTime" column="PUBLISH_TIME"/>
+	<result property="type" column="STUDENT_TYPE"/>
+	<result property="clickNum" column="CLICK_NUM"/>
+	<result property="praiseCount" column="PRAISE_COUNT"/>
+	<result property="commentNum" column="COMMENT_NUM"/>
+	<result property="sort" column="SORT"/>
+
+	</resultMap>
+	
+	<!-- 创建文章 -->
+	<insert id="createStudent" parameterType="Student" useGeneratedKeys="true" keyProperty="studentId" keyColumn="STUDENT_ID">
+	INSERT INTO EDU_STUDENT(<include refid="edu_student_column"/>) VALUE(<include refid="edu_student_property"/>)
+	</insert>
+	
+	<!-- 添加文章内容 -->
+	<insert id="addStudentContent" parameterType="StudentContent">
+	INSERT INTO EDU_STUDENT_CONTENT(<include refid="edu_student_content_column"/>) 
+	VALUE(<include refid="edu_student_content_property"/>)
+	</insert>
+	
+	<!-- 更新文章信息 -->
+	<update id="updateStudent" parameterType="Student">
+	UPDATE EDU_STUDENT SET 
+	EDU_STUDENT.TITLE=#{title},
+	EDU_STUDENT.SUMMARY=#{summary},
+	EDU_STUDENT.IMAGE_URL=#{imageUrl},
+	EDU_STUDENT.SOURCE=#{source},
+	EDU_STUDENT.CLICK_NUM=#{clickNum},
+	EDU_STUDENT.AUTHOR=#{author},
+	EDU_STUDENT.PUBLISH_TIME=#{publishTime},
+	EDU_STUDENT.STUDENT_TYPE=#{type},
+	EDU_STUDENT.SORT=#{sort}
+	WHERE EDU_STUDENT.STUDENT_ID=#{studentId}
+	</update>
+	
+	<!-- 更新文章内容 -->
+	<update id="updateStudentContent" parameterType="StudentContent">
+	UPDATE EDU_STUDENT_CONTENT SET
+	EDU_STUDENT_CONTENT.CONTENT=#{content} 
+	WHERE EDU_STUDENT_CONTENT.STUDENT_ID=#{studentId}
+	</update>
+	
+	<!-- 删除文章 -->
+	<delete id="deleteStudentByIds" parameterType="java.lang.String">
+	DELETE FROM EDU_STUDENT WHERE EDU_STUDENT.STUDENT_ID IN (${value})
+	</delete>
+	
+	<!-- 删除文章内容 -->
+	<delete id="deleteStudentContentByStudentIds" parameterType="java.lang.String">
+	DELETE FROM EDU_STUDENT_CONTENT WHERE EDU_STUDENT_CONTENT.STUDENT_ID IN (${value})
+	</delete>
+	
+	<!-- 通过ID查询文章信息 -->
+	<select id="queryStudentById" parameterType="int" resultMap="StudentResult">
+	SELECT <include refid="edu_student_column"/> FROM EDU_STUDENT WHERE EDU_STUDENT.STUDENT_ID=#{value}
+	</select>
+	
+	<!-- 通过文章ID，查询文章内容 -->
+	<select id="queryStudentContentByStudentId" parameterType="int" resultType="java.lang.String">
+	SELECT EDU_STUDENT_CONTENT.CONTENT FROM EDU_STUDENT_CONTENT WHERE EDU_STUDENT_CONTENT.STUDENT_ID =#{value}
+	</select>
+	
+	<!--  分页查询文章列表，开始 -->
+	<select id="queryStudentPage" parameterType="java.util.Map" resultMap="StudentResult">
+	SELECT <include refid="edu_student_column"/> FROM EDU_STUDENT 
+	<where>
+		<if test="e.type>0">
+			EDU_STUDENT.STUDENT_TYPE=#{e.type}
+		</if>
+		<if test="e.beginCreateTime!=null and e.beginCreateTime!=''">
+			AND EDU_STUDENT.CREATE_TIME >= #{e.beginCreateTime}
+		</if>
+		<if test="e.endCreateTime!=null and e.endCreateTime!=''">
+			AND <![CDATA[EDU_STUDENT.CREATE_TIME <= #{e.endCreateTime}]]>
+		</if>
+		<if test="e.queryKey!=null and e.queryKey!=''">
+			AND (EDU_STUDENT.TITLE LIKE CONCAT('%',#{e.queryKey},'%') OR EDU_STUDENT.SOURCE LIKE CONCAT('%',#{e.queryKey},'%') OR EDU_STUDENT.AUTHOR LIKE CONCAT('%',#{e.queryKey},'%'))
+		</if>
+	</where>
+	order by sort desc,PUBLISH_TIME desc
+	</select>
+	
+	<!-- 更新文章浏览量 -->
+	<update id="updateStudentNum" parameterType="Map">
+	UPDATE EDU_STUDENT SET 
+	<if test="type=='clickNum'">
+	CLICK_NUM=CLICK_NUM${num} 
+	</if>
+	<if test="type=='praiseCount'">
+	PRAISE_COUNT=PRAISE_COUNT${num} 
+	</if>
+	<if test="type=='commentCount'">
+	COMMENT_NUM=COMMENT_NUM${num} 
+	</if>
+	WHERE 
+	EDU_STUDENT.STUDENT_ID=#{studentId}
+	</update>
+	
+	<!-- 设置文章为发布状态 -->
+	<update id="updateStudentPublishState" parameterType="java.lang.String">
+	UPDATE EDU_STUDENT SET 
+	EDU_STUDENT.PUBLISH_TIME=NOW(),
+	EDU_STUDENT.PUBLISH_STATE=2
+	WHERE EDU_STUDENT.STUDENT_ID IN(${value})
+	</update>
+	
+	<!-- 通过ID串，查询文章列表信息 -->
+	<select id="queryStudentListByIds" parameterType="java.lang.String" resultMap="StudentResult">
+	SELECT <include refid="edu_student_column"/> FROM EDU_STUDENT WHERE EDU_STUDENT.STUDENT_ID IN(${value})
+	</select>
+	
+	<!-- 公共多条件查询文章资讯列表,用于前台 -->
+	<select id="queryStudentList" parameterType="QueryStudent" resultMap="StudentResult">
+	SELECT <include refid="edu_student_column"/> FROM EDU_STUDENT 
+	WHERE EDU_STUDENT.PUBLISH_STATE=2
+	<if test="type>0">
+	AND EDU_STUDENT.STUDENT_TYPE=#{type}
+	</if>
+	<if test="orderby==0">
+	ORDER BY EDU_STUDENT.CREATE_TIME DESC
+	</if>
+	<if test="orderby==1">
+	ORDER BY EDU_STUDENT.CLICK_NUM DESC
+	</if>
+	<if test="count>0">
+	LIMIT #{count}
+	</if>
+	</select>
+	<!-- 查询上一篇或下一篇文章 -->
+	<select id="queryUpOrDownStudent" parameterType="java.util.Map" resultMap="StudentResult">
+	SELECT <include refid="edu_student_column"/> FROM EDU_STUDENT 
+	WHERE EDU_STUDENT.PUBLISH_STATE=2
+	<if test="keyWord=='UP'">
+	AND <![CDATA[EDU_STUDENT.STUDENT_ID <#{studentId}]]> ORDER BY STUDENT_ID DESC
+	</if>
+	<if test="keyWord=='DOWN'">
+	AND <![CDATA[EDU_STUDENT.STUDENT_ID >#{studentId}]]> ORDER BY STUDENT_ID ASC
+	</if>
+	LIMIT 1
+	</select>
+	
+	<!-- 获取所有文章总记录数 -->
+	<select id="queryAllStudentCount" resultType="int">
+	SELECT COUNT(1) FROM EDU_STUDENT
+	</select>
+</mapper>
